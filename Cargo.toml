@@ -1,6 +1,10 @@
 [package]
 name = "pythia"
+description = "DLC oracle"
 version = "0.0.1"
 edition = "2021"
+license = "CC0-1.0"
+homepage = "https://github.com/raphjaph/pythia"
+repository = "https://github.com/raphjaph/pythia"
 
 [dependencies]
