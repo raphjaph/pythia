@@ -6,5 +6,21 @@ edition = "2021"
 license = "CC0-1.0"
 homepage = "https://github.com/raphjaph/pythia"
 repository = "https://github.com/raphjaph/pythia"
+autotests = false
 
 [dependencies]
+anyhow = "1.0.95"
+bitcoin = "0.32.5"
+env_logger = "0.11.6"
+log = "0.4.25"
+secp256k1 = { version =  "0.30.0", features = ["rand"] }
+
+[dev-dependencies]
+
+[[bin]]
+name = "pythia"
+path = "src/bin/main.rs"
+
+[lib]
+name = "pythia"
+path = "src/lib.rs"
