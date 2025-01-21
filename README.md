@@ -4,7 +4,7 @@ Pythia
 ### TODO
 
 - [x] private/public key 
-- [ ] nonces and events
+- [x] nonces and events
 - [ ] announcements and attestations
 - [ ] persistence aka database
 - [ ] connect bitcoin
