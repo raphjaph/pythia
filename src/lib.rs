@@ -1,12 +1,15 @@
 use {
-  anyhow::Error,
+  anyhow::{anyhow, Error},
   bitcoin::hashes::{sha256, Hash},
   secp256k1::{
-    rand::rngs::OsRng, schnorr::Signature, All, Keypair, PublicKey, Secp256k1, XOnlyPublicKey,
+    rand::{self, prelude::*},
+    schnorr::Signature,
+    All, Keypair, PublicKey, Secp256k1, XOnlyPublicKey,
   },
-  std::{env, process},
+  std::{collections::BTreeMap, env, process},
 };
 
+mod event;
 mod oracle;
 
 use oracle::Oracle;
@@ -14,7 +17,7 @@ use oracle::Oracle;
 type Result<T = (), E = Error> = std::result::Result<T, E>;
 
 pub fn run() -> Result {
-  let oracle = Oracle::new();
+  let mut oracle = Oracle::new();
 
   log::info!("Oracle public key: {}", oracle.pub_key());
 
@@ -24,6 +27,12 @@ pub fn run() -> Result {
     "Oracle sign message: {}",
     oracle.sign_message("Hello World".as_bytes())
   );
+
+  let outcomes = vec!["even".into(), "odd".into()];
+
+  oracle.create_event(outcomes)?;
+
+  oracle.print_events();
 
   Ok(())
 }

@@ -1,4 +1,4 @@
-use super::*;
+use {super::*, event::Event};
 
 const TAG: &str = "DLC/oracle/";
 
@@ -13,6 +13,7 @@ pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
 }
 
 pub(crate) struct Oracle {
+  events: Vec<Event>,
   keypair: Keypair,
   secp: Secp256k1<All>,
 }
@@ -21,11 +22,15 @@ impl Oracle {
   pub(crate) fn new() -> Self {
     let secp = Secp256k1::new();
 
-    let (secret_key, _public_key) = secp.generate_keypair(&mut OsRng);
+    let (secret_key, _public_key) = secp.generate_keypair(&mut rand::thread_rng());
 
     let keypair = Keypair::from_secret_key(&secp, &secret_key);
 
-    Self { keypair, secp }
+    Self {
+      events: Vec::new(),
+      keypair,
+      secp,
+    }
   }
 
   pub(crate) fn pub_key(&self) -> PublicKey {
@@ -44,6 +49,24 @@ impl Oracle {
     self
       .secp
       .sign_schnorr_no_aux_rand(&tagged_hash, &self.keypair)
+  }
+
+  pub(crate) fn create_event(&mut self, outcomes: Vec<String>) -> Result {
+    let event = Event::new(outcomes)?;
+    self.events.push(event);
+
+    Ok(())
+  }
+
+  pub(crate) fn print_events(&self) {
+    for (i, event) in self.events.iter().enumerate() {
+      println!("{i}");
+      for (outcome, nonce) in event.outcomes.clone() {
+        println!("Outcome: {outcome}");
+        println!("k: {:?}", nonce);
+        println!("R: {}", event.one_time_use_signing_key(&outcome).unwrap());
+      }
+    }
   }
 }
 
