@@ -1,6 +1,7 @@
 use {
   anyhow::{ensure, Error},
   bitcoin::hashes::{sha256, Hash},
+  oracle::Oracle,
   secp256k1::{
     rand::{self, prelude::*},
     schnorr::Signature,
@@ -12,9 +13,19 @@ use {
 
 mod oracle;
 
-use oracle::Oracle;
-
 type Result<T = (), E = Error> = std::result::Result<T, E>;
+
+const TAG: &str = "DLC/oracle/";
+
+pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
+  let mut tag_hash = sha256::Hash::hash(TAG.as_bytes()).to_byte_array().to_vec();
+  tag_hash.extend(tag_hash.clone());
+  tag_hash.extend(message);
+
+  sha256::Hash::hash(tag_hash.as_slice())
+    .to_byte_array()
+    .to_vec()
+}
 
 pub fn run() -> Result {
   let mut oracle = Oracle::new();
