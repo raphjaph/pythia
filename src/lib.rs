@@ -1,29 +1,49 @@
 use {
-  anyhow::Error,
+  anyhow::{ensure, Error},
   bitcoin::hashes::{sha256, Hash},
+  oracle::Oracle,
   secp256k1::{
-    rand::rngs::OsRng, schnorr::Signature, All, Keypair, PublicKey, Secp256k1, XOnlyPublicKey,
+    rand::{self, prelude::*},
+    schnorr::Signature,
+    Keypair, Secp256k1, XOnlyPublicKey,
   },
+  serde::{Deserialize, Serialize},
   std::{env, process},
 };
 
 mod oracle;
 
-use oracle::Oracle;
-
 type Result<T = (), E = Error> = std::result::Result<T, E>;
 
+const TAG: &str = "DLC/oracle/";
+
+pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
+  let mut tag_hash = sha256::Hash::hash(TAG.as_bytes()).to_byte_array().to_vec();
+  tag_hash.extend(tag_hash.clone());
+  tag_hash.extend(message);
+
+  sha256::Hash::hash(tag_hash.as_slice())
+    .to_byte_array()
+    .to_vec()
+}
+
 pub fn run() -> Result {
-  let oracle = Oracle::new();
+  let mut oracle = Oracle::new();
 
-  log::info!("Oracle public key: {}", oracle.pub_key());
+  println!("Oracle public key: {}", oracle.keypair.public_key());
 
-  log::info!("Oracle x only public key: {}", oracle.x_only_pub_key());
+  println!("Oracle x only public key: {}", oracle.x_only_pub_key());
 
-  log::info!(
+  println!(
     "Oracle sign message: {}",
-    oracle.sign_message("Hello World".as_bytes())
+    oracle.sign("Hello World".as_bytes())
   );
+
+  let outcome_names = vec!["even".into(), "odd".into()];
+
+  oracle.create_event("Even or Odd".into(), outcome_names)?;
+
+  serde_json::to_writer_pretty(std::io::stdout(), &oracle.events)?;
 
   Ok(())
 }
