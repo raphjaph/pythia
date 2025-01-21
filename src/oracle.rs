@@ -1,4 +1,9 @@
-use {super::*, event::Event};
+use super::*;
+
+mod event;
+mod outcome;
+
+use event::Event;
 
 const TAG: &str = "DLC/oracle/";
 
@@ -13,9 +18,8 @@ pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
 }
 
 pub(crate) struct Oracle {
-  events: Vec<Event>,
-  keypair: Keypair,
-  secp: Secp256k1<All>,
+  pub(crate) events: Vec<Event>,
+  pub(crate) keypair: Keypair,
 }
 
 impl Oracle {
@@ -29,12 +33,7 @@ impl Oracle {
     Self {
       events: Vec::new(),
       keypair,
-      secp,
     }
-  }
-
-  pub(crate) fn pub_key(&self) -> PublicKey {
-    self.keypair.public_key()
   }
 
   pub(crate) fn x_only_pub_key(&self) -> XOnlyPublicKey {
@@ -43,30 +42,24 @@ impl Oracle {
     x_only_pub_key
   }
 
-  pub(crate) fn sign_message(&self, message: &[u8]) -> Signature {
+  pub(crate) fn sign(&self, message: &[u8]) -> Signature {
     let tagged_hash = tagged_message_hash(message);
 
-    self
-      .secp
-      .sign_schnorr_no_aux_rand(&tagged_hash, &self.keypair)
+    Secp256k1::new().sign_schnorr_no_aux_rand(&tagged_hash, &self.keypair)
   }
 
-  pub(crate) fn create_event(&mut self, outcomes: Vec<String>) -> Result {
-    let event = Event::new(outcomes)?;
+  pub(crate) fn create_event(&mut self, name: String, outcome_names: Vec<String>) -> Result {
+    ensure!(
+      !outcome_names.is_empty(),
+      "cannot create an event with no outcomes"
+    );
+
+    log::info!("Creating event with {} outcomes", outcome_names.len());
+
+    let event = Event::new(name, outcome_names)?;
     self.events.push(event);
 
     Ok(())
-  }
-
-  pub(crate) fn print_events(&self) {
-    for (i, event) in self.events.iter().enumerate() {
-      println!("{i}");
-      for (outcome, nonce) in event.outcomes.clone() {
-        println!("Outcome: {outcome}");
-        println!("k: {:?}", nonce);
-        println!("R: {}", event.one_time_use_signing_key(&outcome).unwrap());
-      }
-    }
   }
 }
 
@@ -75,14 +68,14 @@ mod tests {
   use {super::*, std::assert};
 
   #[test]
-  fn sign_message() {
+  fn sign_message_with_oracle_pubkey() {
     let oracle = Oracle::new();
 
     let message = "Hi my name is Pythia";
 
     let tagged_hash = tagged_message_hash(message.as_bytes());
 
-    let signature = oracle.sign_message(message.as_bytes());
+    let signature = oracle.sign(message.as_bytes());
 
     assert!(Secp256k1::verification_only()
       .verify_schnorr(&signature, &tagged_hash, &oracle.x_only_pub_key())

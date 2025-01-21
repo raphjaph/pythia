@@ -13,7 +13,9 @@ anyhow = "1.0.95"
 bitcoin = "0.32.5"
 env_logger = "0.11.6"
 log = "0.4.25"
-secp256k1 = { version =  "0.30.0", features = ["rand"] }
+secp256k1 = { version =  "0.30.0", features = ["rand", "serde"] }
+serde = { version = "1.0.217", features = ["derive"]}
+serde_json = "1.0.137"
 # secp256k1-zkp = { version =  "0.11.0", features = ["std"] }
 
 [dev-dependencies]

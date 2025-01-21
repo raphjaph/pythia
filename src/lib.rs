@@ -1,15 +1,15 @@
 use {
-  anyhow::{anyhow, Error},
+  anyhow::{ensure, Error},
   bitcoin::hashes::{sha256, Hash},
   secp256k1::{
     rand::{self, prelude::*},
     schnorr::Signature,
-    All, Keypair, PublicKey, Secp256k1, XOnlyPublicKey,
+    Keypair, Secp256k1, XOnlyPublicKey,
   },
-  std::{collections::BTreeMap, env, process},
+  serde::{Deserialize, Serialize},
+  std::{env, process},
 };
 
-mod event;
 mod oracle;
 
 use oracle::Oracle;
@@ -19,20 +19,20 @@ type Result<T = (), E = Error> = std::result::Result<T, E>;
 pub fn run() -> Result {
   let mut oracle = Oracle::new();
 
-  log::info!("Oracle public key: {}", oracle.pub_key());
+  println!("Oracle public key: {}", oracle.keypair.public_key());
 
-  log::info!("Oracle x only public key: {}", oracle.x_only_pub_key());
+  println!("Oracle x only public key: {}", oracle.x_only_pub_key());
 
-  log::info!(
+  println!(
     "Oracle sign message: {}",
-    oracle.sign_message("Hello World".as_bytes())
+    oracle.sign("Hello World".as_bytes())
   );
 
-  let outcomes = vec!["even".into(), "odd".into()];
+  let outcome_names = vec!["even".into(), "odd".into()];
 
-  oracle.create_event(outcomes)?;
+  oracle.create_event("Even or Odd".into(), outcome_names)?;
 
-  oracle.print_events();
+  serde_json::to_writer_pretty(std::io::stdout(), &oracle.events)?;
 
   Ok(())
 }
