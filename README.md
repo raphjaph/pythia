@@ -4,6 +4,7 @@ Pythia
 ### TODO
 
 - [ ] private/public key 
+  - Schnorr
 - [ ] nonces and events
 - [ ] announcements and attestations
 - [ ] persistence aka database
