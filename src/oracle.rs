@@ -2,7 +2,6 @@ use super::*;
 
 const TAG: &str = "DLC/oracle/";
 
-/// Create the tagged message hash.
 pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
   let mut tag_hash = sha256::Hash::hash(TAG.as_bytes()).to_byte_array().to_vec();
   tag_hash.extend(tag_hash.clone());

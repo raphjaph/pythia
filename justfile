@@ -14,3 +14,12 @@ ci: clippy
   cargo fmt -- --check
   cargo test --all
   cargo test --all -- --ignored
+
+doc:
+  cargo doc --all --open
+
+outdated:
+  cargo outdated -R --workspace
+
+unused:
+  cargo +nightly udeps

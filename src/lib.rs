@@ -18,6 +18,8 @@ pub fn run() -> Result {
 
   log::info!("Oracle public key: {}", oracle.pub_key());
 
+  log::info!("Oracle x only public key: {}", oracle.x_only_pub_key());
+
   log::info!(
     "Oracle sign message: {}",
     oracle.sign_message("Hello World".as_bytes())

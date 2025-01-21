@@ -3,7 +3,7 @@ Pythia
 
 ### TODO
 
-- [ ] private/public key 
+- [x] private/public key 
 - [ ] nonces and events
 - [ ] announcements and attestations
 - [ ] persistence aka database
