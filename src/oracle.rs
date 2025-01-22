@@ -6,6 +6,7 @@ mod outcome;
 pub(crate) struct Oracle {
   pub(crate) events: Vec<Event>,
   pub(crate) keypair: Keypair,
+  secp: Secp256k1<All>,
 }
 
 impl Oracle {
@@ -19,33 +20,45 @@ impl Oracle {
     Self {
       events: Vec::new(),
       keypair,
+      secp,
     }
   }
 
-  pub(crate) fn x_only_pub_key(&self) -> XOnlyPublicKey {
-    let (x_only_pub_key, _) = self.keypair.x_only_public_key();
-
-    x_only_pub_key
+  pub(crate) fn pub_key(&self) -> XOnlyPublicKey {
+    self.keypair.x_only_public_key().0
   }
 
   pub(crate) fn sign(&self, message: &[u8]) -> Signature {
-    let tagged_hash = tagged_message_hash(message);
-
-    Secp256k1::new().sign_schnorr_no_aux_rand(&tagged_hash, &self.keypair)
+    self
+      .secp
+      .sign_schnorr_no_aux_rand(&tagged_message_hash(message), &self.keypair)
   }
 
-  pub(crate) fn create_event(&mut self, name: String, outcome_names: Vec<String>) -> Result {
+  pub(crate) fn create_event(
+    &mut self,
+    name: String,
+    outcome_labels: Vec<String>,
+  ) -> Result<&Event> {
     ensure!(
-      !outcome_names.is_empty(),
-      "cannot create an event with no outcomes"
+      !outcome_labels.is_empty(),
+      "event must have at least one outcome"
     );
 
-    log::info!("Creating event with {} outcomes", outcome_names.len());
+    log::info!(
+      "Creating event '{}' with {} outcomes",
+      name,
+      outcome_labels.len()
+    );
 
-    let event = Event::new(name, outcome_names)?;
+    let event = Event::new(name, outcome_labels)?;
     self.events.push(event);
 
-    Ok(())
+    Ok(
+      self
+        .events
+        .last()
+        .expect("should always have at least one event"),
+    )
   }
 }
 
@@ -64,7 +77,25 @@ mod tests {
     let signature = oracle.sign(message.as_bytes());
 
     assert!(Secp256k1::verification_only()
-      .verify_schnorr(&signature, &tagged_hash, &oracle.x_only_pub_key())
+      .verify_schnorr(&signature, &tagged_hash, &oracle.pub_key())
       .is_ok());
+  }
+
+  #[test]
+  fn events() {
+    let mut oracle = Oracle::new();
+
+    assert_eq!(oracle.pub_key().serialize().len(), 32);
+
+    let outcome_labels = vec!["even".into(), "odd".into()];
+
+    let event = oracle
+      .create_event("even-or-odd".into(), outcome_labels)
+      .unwrap()
+      .clone();
+
+    assert_eq!(event.outcomes.len(), 2);
+
+    assert_eq!(oracle.events.len(), 1);
   }
 }

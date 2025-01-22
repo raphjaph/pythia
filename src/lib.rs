@@ -5,7 +5,7 @@ use {
   secp256k1::{
     rand::{self, prelude::*},
     schnorr::Signature,
-    Keypair, Secp256k1, XOnlyPublicKey,
+    All, Keypair, Secp256k1, XOnlyPublicKey,
   },
   serde::{Deserialize, Serialize},
   std::{env, process},
@@ -32,7 +32,7 @@ pub fn run() -> Result {
 
   println!("Oracle public key: {}", oracle.keypair.public_key());
 
-  println!("Oracle x only public key: {}", oracle.x_only_pub_key());
+  println!("Oracle x only public key: {}", oracle.pub_key());
 
   println!(
     "Oracle sign message: {}",
@@ -41,7 +41,7 @@ pub fn run() -> Result {
 
   let outcome_names = vec!["even".into(), "odd".into()];
 
-  oracle.create_event("Even or Odd".into(), outcome_names)?;
+  oracle.create_event("even-or-odd".into(), outcome_names)?;
 
   serde_json::to_writer_pretty(std::io::stdout(), &oracle.events)?;
 

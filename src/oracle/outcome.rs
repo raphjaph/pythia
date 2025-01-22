@@ -2,7 +2,24 @@ use super::*;
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub(crate) struct Outcome {
-  pub(crate) name: String,
-  pub(crate) k: [u8; 32],
-  pub(crate) r: XOnlyPublicKey,
+  pub(crate) label: String,
+  pub(crate) secret_nonce: [u8; 32],
+  pub(crate) adaptor_point: XOnlyPublicKey,
+}
+
+impl Outcome {
+  pub(crate) fn new(label: String) -> Result<Self> {
+    let mut secret_nonce = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut secret_nonce);
+
+    let keypair = Keypair::from_seckey_slice(&Secp256k1::new(), &secret_nonce)?;
+
+    let (x_only_public_key, _) = keypair.x_only_public_key();
+
+    Ok(Self {
+      label,
+      secret_nonce,
+      adaptor_point: x_only_public_key,
+    })
+  }
 }
