@@ -1,6 +1,8 @@
 use super::*;
 
+mod run;
 mod sign;
+mod verify;
 
 #[derive(Debug, Parser)]
 pub(crate) enum Subcommand {
@@ -8,27 +10,16 @@ pub(crate) enum Subcommand {
   Run,
   #[command(about = "Sign a message with the oracle public key")]
   Sign(sign::Sign),
+  #[command(about = "Verify a message from an oracle")]
+  Verify(verify::Verify),
 }
 
 impl Subcommand {
   pub(crate) fn run(self) -> Result {
     match self {
-      Self::Run => {
-        let mut oracle = Oracle::new();
-
-        println!("Oracle public key: {}", oracle.keypair.public_key());
-
-        println!("Oracle x only public key: {}", oracle.pub_key());
-
-        let outcome_names = vec!["even".into(), "odd".into()];
-
-        oracle.create_event("even-or-odd".into(), outcome_names)?;
-
-        serde_json::to_writer_pretty(std::io::stdout(), &oracle.events)?;
-
-        Ok(())
-      }
+      Self::Run => run::run(),
       Self::Sign(sign) => sign.run(),
+      Self::Verify(verify) => verify.run(),
     }
   }
 }

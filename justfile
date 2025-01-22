@@ -2,7 +2,7 @@ watch +args='test':
   cargo watch --clear --exec '{{args}}'
 
 run: 
-  RUST_LOG=info cargo run
+  RUST_LOG=info cargo run run
 
 fmt:
   cargo fmt --all
