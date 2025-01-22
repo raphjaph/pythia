@@ -5,11 +5,12 @@ Pythia
 
 - [x] private/public key 
 - [x] nonces and events
+- [ ] command-line arguments
 - [ ] announcements and attestations
-- [ ] persistence aka database
-- [ ] connect bitcoin
+- [ ] options and configuration
+- [ ] database
+- [ ] bitcoin (for source of events)
 - [ ] http server
-- [ ] options and command-line arguments
 
 
 ### Misc

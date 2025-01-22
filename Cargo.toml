@@ -11,6 +11,7 @@ autotests = false
 [dependencies]
 anyhow = "1.0.95"
 bitcoin = "0.32.5"
+clap = { version = "4.5.27", features = ["derive"] }
 env_logger = "0.11.6"
 log = "0.4.25"
 secp256k1 = { version =  "0.30.0", features = ["rand", "serde"] }
