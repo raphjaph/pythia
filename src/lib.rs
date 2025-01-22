@@ -1,6 +1,8 @@
 use {
   anyhow::{ensure, Error},
+  arguments::Arguments,
   bitcoin::hashes::{sha256, Hash},
+  clap::Parser,
   oracle::Oracle,
   secp256k1::{
     rand::{self, prelude::*},
@@ -9,9 +11,12 @@ use {
   },
   serde::{Deserialize, Serialize},
   std::{env, process},
+  subcommand::Subcommand,
 };
 
+mod arguments;
 mod oracle;
+mod subcommand;
 
 type Result<T = (), E = Error> = std::result::Result<T, E>;
 
@@ -27,31 +32,12 @@ pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
     .to_vec()
 }
 
-pub fn run() -> Result {
-  let mut oracle = Oracle::new();
-
-  println!("Oracle public key: {}", oracle.keypair.public_key());
-
-  println!("Oracle x only public key: {}", oracle.pub_key());
-
-  println!(
-    "Oracle sign message: {}",
-    oracle.sign("Hello World".as_bytes())
-  );
-
-  let outcome_names = vec!["even".into(), "odd".into()];
-
-  oracle.create_event("even-or-odd".into(), outcome_names)?;
-
-  serde_json::to_writer_pretty(std::io::stdout(), &oracle.events)?;
-
-  Ok(())
-}
-
 pub fn main() {
   env_logger::init();
 
-  match run() {
+  let args = Arguments::parse();
+
+  match args.run() {
     Err(err) => {
       eprintln!("error: {err}");
       if env::var_os("RUST_BACKTRACE")
