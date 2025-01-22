@@ -31,7 +31,7 @@ impl Oracle {
   pub(crate) fn sign(&self, message: &[u8]) -> Signature {
     self
       .secp
-      .sign_schnorr_no_aux_rand(&tagged_message_hash(message), &self.keypair)
+      .sign_schnorr_no_aux_rand(&tagged_message_hash(message, ORACLE_TAG), &self.keypair)
   }
 
   pub(crate) fn create_event(
@@ -72,7 +72,7 @@ mod tests {
 
     let message = "Hi my name is Pythia";
 
-    let tagged_hash = tagged_message_hash(message.as_bytes());
+    let tagged_hash = tagged_message_hash(message.as_bytes(), ORACLE_TAG);
 
     let signature = oracle.sign(message.as_bytes());
 
@@ -97,5 +97,17 @@ mod tests {
     assert_eq!(event.outcomes.len(), 2);
 
     assert_eq!(oracle.events.len(), 1);
+
+    assert_eq!(
+      event
+        .outcomes
+        .first()
+        .unwrap()
+        .sign()
+        .unwrap()
+        .to_byte_array()
+        .len(),
+      64
+    );
   }
 }

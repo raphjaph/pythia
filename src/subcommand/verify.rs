@@ -14,7 +14,7 @@ pub(crate) struct Verify {
 
 impl Verify {
   pub(crate) fn run(self) -> Result {
-    let tagged_hash = tagged_message_hash(self.message.as_bytes());
+    let tagged_hash = tagged_message_hash(self.message.as_bytes(), ORACLE_TAG);
     let public_key = XOnlyPublicKey::from_str(&self.public_key)?;
     let signature = Signature::from_str(&self.signature)?;
 

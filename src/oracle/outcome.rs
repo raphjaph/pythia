@@ -1,4 +1,4 @@
-use super::*;
+use {super::*, unicode_normalization::UnicodeNormalization};
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub(crate) struct Outcome {
@@ -21,5 +21,14 @@ impl Outcome {
       secret_nonce,
       adaptor_point: x_only_public_key,
     })
+  }
+
+  pub(crate) fn sign(&self) -> Result<Signature> {
+    let normalized_label = self.label.nfc().collect::<String>();
+    let tagged_hash = tagged_message_hash(normalized_label.as_bytes(), ATTESTATION_TAG);
+    let secp = Secp256k1::new();
+    let keypair = Keypair::from_seckey_slice(&secp, &self.secret_nonce)?;
+
+    Ok(secp.sign_schnorr_no_aux_rand(&tagged_hash, &keypair))
   }
 }

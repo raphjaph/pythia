@@ -20,10 +20,11 @@ mod subcommand;
 
 type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-const TAG: &str = "DLC/oracle/";
+const ORACLE_TAG: &str = "DLC/oracle/";
+const ATTESTATION_TAG: &str = "attestation/v0";
 
-pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
-  let mut tag_hash = sha256::Hash::hash(TAG.as_bytes()).to_byte_array().to_vec();
+pub fn tagged_message_hash(message: &[u8], tag: &str) -> Vec<u8> {
+  let mut tag_hash = sha256::Hash::hash(tag.as_bytes()).to_byte_array().to_vec();
   tag_hash.extend(tag_hash.clone());
   tag_hash.extend(message);
 
