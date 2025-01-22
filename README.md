@@ -5,7 +5,7 @@ Pythia
 
 - [x] private/public key 
 - [x] nonces and events
-- [ ] command-line arguments
+- [x] command-line arguments
 - [ ] announcements and attestations
 - [ ] options and configuration
 - [ ] database
