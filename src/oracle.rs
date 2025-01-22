@@ -6,7 +6,7 @@ mod outcome;
 pub(crate) struct Oracle {
   pub(crate) events: Vec<Event>,
   pub(crate) keypair: Keypair,
-  secp: Secp256k1<All>,
+  pub(crate) secp: Secp256k1<All>,
 }
 
 impl Oracle {
@@ -103,7 +103,7 @@ mod tests {
         .outcomes
         .first()
         .unwrap()
-        .sign()
+        .sign(oracle.secp, oracle.keypair)
         .unwrap()
         .to_byte_array()
         .len(),

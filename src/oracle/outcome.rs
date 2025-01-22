@@ -23,12 +23,10 @@ impl Outcome {
     })
   }
 
-  pub(crate) fn sign(&self) -> Result<Signature> {
+  pub(crate) fn sign(&self, secp: Secp256k1<All>, keypair: Keypair) -> Result<Signature> {
     let normalized_label = self.label.nfc().collect::<String>();
     let tagged_hash = tagged_message_hash(normalized_label.as_bytes(), ATTESTATION_TAG);
     let message = Message::from_digest_slice(&tagged_hash)?;
-    let secp = Secp256k1::new();
-    let keypair = Keypair::from_seckey_slice(&secp, &self.secret_nonce)?;
 
     Ok(sign_schnorr_with_nonce(
       &secp,
