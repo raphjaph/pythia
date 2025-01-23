@@ -65,7 +65,7 @@ mod tests {
         &signature,
         &Message::from_digest(tagged_hash(
           ATTESTATION_TAG,
-          &label.nfc().collect::<String>().as_bytes()
+          label.nfc().collect::<String>().as_bytes()
         )),
         &oracle.pub_key()
       )
@@ -102,7 +102,7 @@ mod tests {
         &oracle_pubkey,
         schnorr_fun::Message::raw(&tagged_hash(
           ATTESTATION_TAG,
-          &label.nfc().collect::<String>().as_bytes(),
+          label.nfc().collect::<String>().as_bytes(),
         )),
       )
       .non_zero()
