@@ -22,7 +22,16 @@ impl Outcome {
   }
 
   pub(crate) fn sign(&self, keypair: &Keypair, secp: &Secp256k1<All>) -> Signature {
-    schnorrsig_sign_with_nonce(secp, &self.to_message(), keypair, &self.secret_nonce)
+    let message = self.to_message();
+    let sig = schnorrsig_sign_with_nonce(secp, &message, keypair, &self.secret_nonce);
+
+    assert_eq!(sig.serialize()[..32], self.adaptor_point.serialize());
+
+    assert!(secp
+      .verify_schnorr(&sig, &message, &keypair.x_only_public_key().0)
+      .is_ok());
+
+    sig
   }
 
   pub(crate) fn to_message(&self) -> Message {
@@ -89,29 +98,21 @@ mod tests {
       Point::<EvenY, Public, _>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
 
     let oracle_secret_key: Scalar<Secret> =
-      Scalar::from_bytes(*oracle.keypair.secret_key().as_ref())
-        .unwrap()
-        .non_zero()
-        .unwrap();
+      Scalar::from_bytes(*oracle.keypair.secret_key().as_ref()).unwrap();
 
-    let schnorr = Schnorr::<Sha256>::new(NoNonces);
+    let challenge = Schnorr::<Sha256>::new(NoNonces).challenge(
+      &adaptor_point,
+      &oracle_pubkey,
+      schnorr_fun::Message::<Public>::raw(message.as_ref()),
+    );
 
-    let challenge: Scalar<Secret> = schnorr
-      .challenge(
-        &adaptor_point,
-        &oracle_pubkey,
-        schnorr_fun::Message::raw(message.as_ref()),
-      )
-      .non_zero()
-      .unwrap();
-
-    let s: Scalar<Secret> = Scalar::from_bytes(signature.as_ref()[32..].try_into().unwrap())
-      .unwrap()
-      .non_zero()
-      .unwrap();
+    let s: Scalar<Secret> =
+      Scalar::from_bytes(signature.as_ref()[32..].try_into().unwrap()).unwrap();
 
     let rhs = s!(challenge * oracle_secret_key);
     let recovered_nonce = s!(s - rhs);
+
+    assert_eq!(recovered_nonce.to_bytes(), outcome.secret_nonce);
 
     assert_eq!(
       outcome.adaptor_point,
@@ -119,11 +120,6 @@ mod tests {
         .unwrap()
         .x_only_public_key()
         .0
-    );
-
-    assert_eq!(
-      recovered_nonce.non_zero().unwrap().to_bytes(),
-      outcome.secret_nonce
     );
   }
 
