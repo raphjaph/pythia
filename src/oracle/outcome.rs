@@ -22,16 +22,15 @@ impl Outcome {
   }
 
   pub(crate) fn sign(&self, keypair: &Keypair, secp: &Secp256k1<All>) -> Signature {
+    schnorrsig_sign_with_nonce(secp, &self.to_message(), keypair, &self.secret_nonce)
+  }
+
+  pub(crate) fn to_message(&self) -> Message {
     // https://github.com/discreetlogcontracts/dlcspecs/blob/master/Oracle.md#serialization-and-signing-of-outcome-values
     let normalized_label = self.label.nfc().collect::<String>();
     let tagged_hash = tagged_hash(ATTESTATION_TAG, normalized_label.as_bytes());
 
-    schnorrsig_sign_with_nonce(
-      secp,
-      &Message::from_digest(tagged_hash),
-      keypair,
-      &self.secret_nonce,
-    )
+    Message::from_digest(tagged_hash)
   }
 }
 
@@ -41,7 +40,7 @@ mod tests {
     super::*,
     schnorr_fun::{
       fun::{
-        marker::{EvenY, Secret},
+        marker::{EvenY, Public, Secret},
         s, Point, Scalar,
       },
       nonce::NoNonces,
@@ -78,15 +77,16 @@ mod tests {
     let oracle = Oracle::new();
     let label = "the-sky-falls-on-our-heads".to_string();
     let outcome = Outcome::new(label.clone(), &secp).unwrap();
+    let message = outcome.to_message();
     let signature = outcome.sign(&oracle.keypair, &secp);
 
     // extract compressed pub key from xonlypubkey
     // Even y-coordinate according to BIP340
     let adaptor_point =
-      Point::<EvenY, Secret, _>::from_xonly_bytes(outcome.adaptor_point.serialize()).unwrap();
+      Point::<EvenY, Public, _>::from_xonly_bytes(outcome.adaptor_point.serialize()).unwrap();
 
     let oracle_pubkey =
-      Point::<EvenY, Secret, _>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
+      Point::<EvenY, Public, _>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
 
     let oracle_secret_key: Scalar<Secret> =
       Scalar::from_bytes(*oracle.keypair.secret_key().as_ref())
@@ -100,10 +100,7 @@ mod tests {
       .challenge(
         &adaptor_point,
         &oracle_pubkey,
-        schnorr_fun::Message::raw(&tagged_hash(
-          ATTESTATION_TAG,
-          label.nfc().collect::<String>().as_bytes(),
-        )),
+        schnorr_fun::Message::raw(message.as_ref()),
       )
       .non_zero()
       .unwrap();
@@ -116,7 +113,18 @@ mod tests {
     let rhs = s!(challenge * oracle_secret_key);
     let recovered_nonce = s!(s - rhs);
 
-    assert_eq!(recovered_nonce.to_bytes(), outcome.secret_nonce);
+    assert_eq!(
+      outcome.adaptor_point,
+      Keypair::from_seckey_slice(&secp, &recovered_nonce.to_bytes())
+        .unwrap()
+        .x_only_public_key()
+        .0
+    );
+
+    assert_eq!(
+      recovered_nonce.non_zero().unwrap().to_bytes(),
+      outcome.secret_nonce
+    );
   }
 
   #[test]
