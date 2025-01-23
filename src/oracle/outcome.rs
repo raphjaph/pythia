@@ -21,15 +21,15 @@ impl Outcome {
     })
   }
 
-  pub(crate) fn sign(&self, keypair: Keypair, secp: Secp256k1<All>) -> Signature {
+  pub(crate) fn sign(&self, keypair: &Keypair, secp: &Secp256k1<All>) -> Signature {
     // https://github.com/discreetlogcontracts/dlcspecs/blob/master/Oracle.md#serialization-and-signing-of-outcome-values
     let normalized_label = self.label.nfc().collect::<String>();
     let tagged_hash = tagged_hash(ATTESTATION_TAG, normalized_label.as_bytes());
 
     schnorrsig_sign_with_nonce(
-      &secp,
+      secp,
       &Message::from_digest(tagged_hash),
-      &keypair,
+      keypair,
       &self.secret_nonce,
     )
   }
@@ -37,7 +37,87 @@ impl Outcome {
 
 #[cfg(test)]
 mod tests {
-  use {super::*, serde_json::json};
+  use {
+    super::*,
+    schnorr_fun::{
+      fun::{
+        marker::{EvenY, Secret},
+        s, Point, Scalar,
+      },
+      nonce::NoNonces,
+      Schnorr,
+    },
+    serde_json::json,
+    sha2::Sha256,
+    std::fmt::Write,
+  };
+
+  #[test]
+  fn signed_outcome_verifies() {
+    let secp = Secp256k1::new();
+    let oracle = Oracle::new();
+    let label: String = "this-is-a-label-for-an-outcome".into();
+    let outcome = Outcome::new(label.clone(), &secp).unwrap();
+    let signature = outcome.sign(&oracle.keypair, &secp);
+
+    assert!(Secp256k1::verification_only()
+      .verify_schnorr(
+        &signature,
+        &Message::from_digest(tagged_hash(
+          ATTESTATION_TAG,
+          &label.nfc().collect::<String>().as_bytes()
+        )),
+        &oracle.pub_key()
+      )
+      .is_ok());
+  }
+
+  #[test]
+  fn siging_outcome_reveals_secret_nonce() {
+    let secp = Secp256k1::new();
+    let oracle = Oracle::new();
+    let label = "the-sky-falls-on-our-heads".to_string();
+    let outcome = Outcome::new(label.clone(), &secp).unwrap();
+    let signature = outcome.sign(&oracle.keypair, &secp);
+
+    // extract compressed pub key from xonlypubkey
+    // Even y-coordinate according to BIP340
+    let adaptor_point =
+      Point::<EvenY, Secret, _>::from_xonly_bytes(outcome.adaptor_point.serialize()).unwrap();
+
+    let oracle_pubkey =
+      Point::<EvenY, Secret, _>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
+
+    let oracle_secret_key: Scalar<Secret> =
+      Scalar::from_bytes(*oracle.keypair.secret_key().as_ref())
+        .unwrap()
+        .non_zero()
+        .unwrap();
+
+    let schnorr = Schnorr::<Sha256>::new(NoNonces);
+
+    let challenge: Scalar<Secret> = schnorr
+      .challenge(
+        &adaptor_point,
+        &oracle_pubkey,
+        schnorr_fun::Message::raw(&tagged_hash(
+          ATTESTATION_TAG,
+          &label.nfc().collect::<String>().as_bytes(),
+        )),
+      )
+      .non_zero()
+      .unwrap();
+
+    let s: Scalar<Secret> = Scalar::from_bytes(signature.as_ref()[32..].try_into().unwrap())
+      .unwrap()
+      .non_zero()
+      .unwrap();
+
+    let rhs = s!(challenge * oracle_secret_key);
+    let recovered_nonce = s!(s - rhs);
+
+    assert_eq!(recovered_nonce.to_bytes(), outcome.secret_nonce);
+  }
 
   #[test]
   fn labels_are_normalized_correctly() {
@@ -85,10 +165,13 @@ mod tests {
       for variant in test["Variants"].as_array().unwrap() {
         let normalized = variant.as_str().unwrap().nfc().collect::<String>();
 
-        let hex = normalized
-          .bytes()
-          .map(|b| format!("{:02x}", b))
-          .collect::<String>();
+        let hex =
+          normalized
+            .bytes()
+            .fold(String::with_capacity(normalized.len() * 2), |mut acc, b| {
+              write!(&mut acc, "{:02x}", b).unwrap();
+              acc
+            });
 
         assert_eq!(test["Expected"].as_str().unwrap(), hex);
 
