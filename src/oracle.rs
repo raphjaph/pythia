@@ -108,7 +108,7 @@ mod tests {
         .outcomes
         .first()
         .unwrap()
-        .sign(oracle.secp, oracle.keypair)
+        .sign(oracle.keypair, oracle.secp)
         .unwrap()
         .serialize()
         .len(),
