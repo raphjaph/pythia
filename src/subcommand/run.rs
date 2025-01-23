@@ -21,7 +21,7 @@ pub fn run() -> Result {
     "\n\nSignature for event {} and outcome {}: {}",
     event.id,
     outcome.label,
-    outcome.sign(oracle.keypair, oracle.secp).unwrap()
+    outcome.sign(oracle.keypair, oracle.secp)
   );
 
   Ok(())

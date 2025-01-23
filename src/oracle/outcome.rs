@@ -21,17 +21,17 @@ impl Outcome {
     })
   }
 
-  pub(crate) fn sign(&self, keypair: Keypair, secp: Secp256k1<All>) -> Result<Signature> {
+  pub(crate) fn sign(&self, keypair: Keypair, secp: Secp256k1<All>) -> Signature {
     // https://github.com/discreetlogcontracts/dlcspecs/blob/master/Oracle.md#serialization-and-signing-of-outcome-values
     let normalized_label = self.label.nfc().collect::<String>();
     let tagged_hash = tagged_hash(ATTESTATION_TAG, normalized_label.as_bytes());
 
-    Ok(schnorrsig_sign_with_nonce(
+    schnorrsig_sign_with_nonce(
       &secp,
       &Message::from_digest(tagged_hash),
       &keypair,
       &self.secret_nonce,
-    ))
+    )
   }
 }
 

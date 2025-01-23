@@ -2,7 +2,7 @@ use {
   anyhow::{ensure, Error},
   arguments::Arguments,
   bitcoin::{
-    hashes::{sha256, Hash},
+    hashes::{sha256, Hash, HashEngine},
     secp256k1::{
       rand::{self, prelude::*},
       schnorr::Signature,
@@ -28,13 +28,13 @@ const _ANNOUNCEMENT_TAG: &str = "DLC/oracle/attestation/v0";
 const ATTESTATION_TAG: &str = "DLC/oracle/attestation/v0";
 
 // this can be optimized using the midstate pattern (see DLC crate)
-// but I can't be bothered at the moment
 pub fn tagged_hash(tag: &str, message: &[u8]) -> [u8; 32] {
-  let mut tag_hash = sha256::Hash::hash(tag.as_bytes()).to_byte_array().to_vec();
-  tag_hash.extend(tag_hash.clone());
-  tag_hash.extend(message);
-
-  sha256::Hash::hash(tag_hash.as_slice()).to_byte_array()
+  let tag_hash = sha256::Hash::hash(tag.as_bytes());
+  let mut engine = sha256::HashEngine::default();
+  engine.input(tag_hash.as_ref());
+  engine.input(tag_hash.as_ref());
+  engine.input(message);
+  *sha256::Hash::from_engine(engine).as_ref()
 }
 
 pub fn main() {
