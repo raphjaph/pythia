@@ -1,15 +1,14 @@
 use {
   anyhow::{ensure, Error},
   arguments::Arguments,
-  bitcoin::hashes::{sha256, Hash},
-  clap::Parser,
-  oracle::Oracle,
-  secp256k1::{
-    rand::{self, prelude::*},
-    schnorr::Signature,
-    All, Keypair, Secp256k1, XOnlyPublicKey,
+  bitcoin::secp256k1::{
+    rand, schnorr::Signature, All, Keypair, Message, Parity, Secp256k1, XOnlyPublicKey,
   },
+  clap::Parser,
+  dlc::secp_utils::schnorrsig_sign_with_nonce,
+  oracle::Oracle,
   serde::{Deserialize, Serialize},
+  sha2::{Digest, Sha256},
   std::{env, process},
   subcommand::Subcommand,
 };
@@ -20,16 +19,19 @@ mod subcommand;
 
 type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-const TAG: &str = "DLC/oracle/";
+const ORACLE_TAG: &str = "DLC/oracle/";
+const _ANNOUNCEMENT_TAG: &str = "DLC/oracle/attestation/v0";
+const ATTESTATION_TAG: &str = "DLC/oracle/attestation/v0";
 
-pub fn tagged_message_hash(message: &[u8]) -> Vec<u8> {
-  let mut tag_hash = sha256::Hash::hash(TAG.as_bytes()).to_byte_array().to_vec();
-  tag_hash.extend(tag_hash.clone());
-  tag_hash.extend(message);
-
-  sha256::Hash::hash(tag_hash.as_slice())
-    .to_byte_array()
-    .to_vec()
+// this can be optimized using the midstate pattern? (see DLC crate)
+pub fn tagged_hash(tag: &str, message: impl AsRef<[u8]>) -> [u8; 32] {
+  let tag_hash = Sha256::new().chain_update(tag).finalize();
+  Sha256::new()
+    .chain_update(tag_hash)
+    .chain_update(tag_hash)
+    .chain_update(message)
+    .finalize()
+    .into()
 }
 
 pub fn main() {

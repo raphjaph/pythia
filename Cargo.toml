@@ -11,16 +11,20 @@ autobins = false
 
 [dependencies]
 anyhow = "1.0.95"
-bitcoin = "0.32.5"
+bitcoin = { version = "0.32.5", features = ["rand", "serde"] }
 clap = { version = "4.5.27", features = ["derive"] }
+dlc = "0.7.1"
 env_logger = "0.11.6"
 log = "0.4.25"
-secp256k1 = { version =  "0.30.0", features = ["rand", "serde"] }
 serde = { version = "1.0.217", features = ["derive"]}
 serde_json = "1.0.137"
-# secp256k1-zkp = { version =  "0.11.0", features = ["std"] }
+sha2 = "0.10.8"
+unicode-normalization = "0.1.24"
 
 [dev-dependencies]
+hex = "0.4.3"
+schnorr_fun = "0.10.0"
+serde_json = "1.0.137"
 
 [[bin]]
 name = "pythia"

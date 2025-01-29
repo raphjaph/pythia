@@ -7,10 +7,10 @@ pub(crate) struct Event {
 }
 
 impl Event {
-  pub(crate) fn new(id: String, outcome_names: Vec<String>) -> Result<Self> {
+  pub(crate) fn new(id: String, outcome_names: Vec<String>, secp: &Secp256k1<All>) -> Result<Self> {
     let mut outcomes = Vec::new();
     for name in outcome_names {
-      outcomes.push(Outcome::new(name)?);
+      outcomes.push(Outcome::new(name, secp)?);
     }
 
     Ok(Self { id, outcomes })

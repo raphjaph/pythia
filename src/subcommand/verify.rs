@@ -14,10 +14,14 @@ pub(crate) struct Verify {
 
 impl Verify {
   pub(crate) fn run(self) -> Result {
-    let tagged_hash = tagged_message_hash(self.message.as_bytes());
+    let tagged_hash = tagged_hash(ORACLE_TAG, self.message.as_bytes());
     let public_key = XOnlyPublicKey::from_str(&self.public_key)?;
     let signature = Signature::from_str(&self.signature)?;
 
-    Ok(Secp256k1::verification_only().verify_schnorr(&signature, &tagged_hash, &public_key)?)
+    Ok(Secp256k1::verification_only().verify_schnorr(
+      &signature,
+      &Message::from_digest(tagged_hash),
+      &public_key,
+    )?)
   }
 }
