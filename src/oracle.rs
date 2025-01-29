@@ -13,9 +13,15 @@ impl Oracle {
   pub(crate) fn new() -> Self {
     let secp = Secp256k1::new();
 
-    let (secret_key, _public_key) = secp.generate_keypair(&mut rand::thread_rng());
+    let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
 
-    let keypair = Keypair::from_secret_key(&secp, &secret_key);
+    let keypair = if public_key.x_only_public_key().1 == Parity::Odd {
+      Keypair::from_secret_key(&secp, &secret_key.negate())
+    } else {
+      Keypair::from_secret_key(&secp, &secret_key)
+    };
+
+    debug_assert_eq!(keypair.x_only_public_key().1, Parity::Even);
 
     Self {
       events: Vec::new(),

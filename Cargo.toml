@@ -18,13 +18,13 @@ env_logger = "0.11.6"
 log = "0.4.25"
 serde = { version = "1.0.217", features = ["derive"]}
 serde_json = "1.0.137"
+sha2 = "0.10.8"
 unicode-normalization = "0.1.24"
 
 [dev-dependencies]
 hex = "0.4.3"
 schnorr_fun = "0.10.0"
 serde_json = "1.0.137"
-sha2 = "0.10.8"
 
 [[bin]]
 name = "pythia"

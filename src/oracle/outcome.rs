@@ -9,14 +9,19 @@ pub(crate) struct Outcome {
 
 impl Outcome {
   pub(crate) fn new(label: String, secp: &Secp256k1<All>) -> Result<Self> {
-    let mut secret_nonce = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut secret_nonce);
+    let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
 
-    let keypair = Keypair::from_seckey_slice(secp, &secret_nonce)?;
+    let keypair = if public_key.x_only_public_key().1 == Parity::Odd {
+      Keypair::from_secret_key(secp, &secret_key.negate())
+    } else {
+      Keypair::from_secret_key(secp, &secret_key)
+    };
+
+    debug_assert_eq!(keypair.x_only_public_key().1, Parity::Even);
 
     Ok(Self {
       label,
-      secret_nonce,
+      secret_nonce: secret_key.secret_bytes(),
       adaptor_point: keypair.x_only_public_key().0,
     })
   }
@@ -47,6 +52,10 @@ impl Outcome {
 mod tests {
   use {
     super::*,
+    bitcoin::{
+      hashes::{sha256, Hash},
+      secp256k1::SecretKey,
+    },
     schnorr_fun::{
       fun::{
         marker::{EvenY, Public, Secret},
@@ -81,7 +90,7 @@ mod tests {
   }
 
   #[test]
-  fn siging_outcome_reveals_secret_nonce() {
+  fn signing_outcome_reveals_secret_nonce() {
     let secp = Secp256k1::new();
     let oracle = Oracle::new();
     let label = "the-sky-falls-on-our-heads".to_string();
@@ -89,16 +98,30 @@ mod tests {
     let message = outcome.to_message();
     let signature = outcome.sign(&oracle.keypair, &secp);
 
-    // extract compressed pub key from xonlypubkey
-    // Even y-coordinate according to BIP340
+    // Verify signature before nonce recovery
+    assert!(
+      secp
+        .verify_schnorr(&signature, &message, &oracle.pub_key())
+        .is_ok(),
+      "Signature verification failed"
+    );
+
+    // Extract R point (first 32 bytes of signature)
     let adaptor_point =
-      Point::<EvenY, Public, _>::from_xonly_bytes(outcome.adaptor_point.serialize()).unwrap();
+      Point::<EvenY, Public>::from_xonly_bytes(outcome.adaptor_point.serialize()).unwrap();
+
+    // Ensure R point has even Y coordinate per BIP340
+    assert_eq!(
+      adaptor_point.to_xonly_bytes(),
+      signature.as_ref()[..32],
+      "R point mismatch"
+    );
 
     let oracle_pubkey =
-      Point::<EvenY, Public, _>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
+      Point::<EvenY, Public>::from_xonly_bytes(oracle.pub_key().serialize()).unwrap();
 
-    let oracle_secret_key: Scalar<Secret> =
-      Scalar::from_bytes(*oracle.keypair.secret_key().as_ref()).unwrap();
+    // Recover nonce
+    let s = Scalar::<Secret>::from_bytes(signature.as_ref()[32..].try_into().unwrap()).unwrap();
 
     let challenge = Schnorr::<Sha256>::new(NoNonces).challenge(
       &adaptor_point,
@@ -106,20 +129,51 @@ mod tests {
       schnorr_fun::Message::<Public>::raw(message.as_ref()),
     );
 
-    let s: Scalar<Secret> =
-      Scalar::from_bytes(signature.as_ref()[32..].try_into().unwrap()).unwrap();
+    let oracle_secret_key =
+      Scalar::<Secret>::from_bytes(*oracle.keypair.secret_key().as_ref()).unwrap();
 
-    let rhs = s!(challenge * oracle_secret_key);
-    let recovered_nonce = s!(s - rhs);
+    let recovered_nonce = s!(s - challenge * oracle_secret_key);
 
-    assert_eq!(recovered_nonce.to_bytes(), outcome.secret_nonce);
+    // Verify the recovered nonce either matches directly or is the negation
+    // https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#public-key-generation
+    let recovered_bytes = recovered_nonce.to_bytes();
+    let original_bytes = outcome.secret_nonce;
+
+    if recovered_bytes != original_bytes {
+      let recovered_nonce = SecretKey::from_slice(&recovered_bytes).unwrap();
+      let original_nonce = SecretKey::from_slice(&original_bytes).unwrap();
+
+      assert!(
+        recovered_nonce.negate() == original_nonce,
+        "Recovered nonce neither matches original nor its negation"
+      );
+
+      let secp = Secp256k1::new();
+      let (ap1, _) = Keypair::from_secret_key(&secp, &recovered_nonce).x_only_public_key();
+      let (ap2, _) = Keypair::from_secret_key(&secp, &original_nonce).x_only_public_key();
+
+      assert_eq!(
+        ap1, ap2,
+        "Adaptor points don't match despite secret key negation"
+      );
+    } else {
+      assert_eq!(recovered_bytes, original_bytes, "Direct key mismatch");
+    }
+
+    // Verify that recovered nonce generates correct adaptor point
+    let recovered_keypair = Keypair::from_seckey_slice(&secp, &recovered_nonce.to_bytes()).unwrap();
 
     assert_eq!(
+      recovered_keypair.x_only_public_key().0,
       outcome.adaptor_point,
-      Keypair::from_seckey_slice(&secp, &recovered_nonce.to_bytes())
-        .unwrap()
-        .x_only_public_key()
-        .0
+      "Recovered public point mismatch"
+    );
+
+    // Verify nonce's public key has even Y coordinate
+    assert_eq!(
+      recovered_keypair.x_only_public_key().1,
+      Parity::Even,
+      "Recovered point has odd Y coordinate"
     );
   }
 
