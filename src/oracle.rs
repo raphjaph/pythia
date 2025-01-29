@@ -57,7 +57,7 @@ impl Oracle {
       outcome_labels.len()
     );
 
-    let event = Event::new(name, outcome_labels)?;
+    let event = Event::new(name, outcome_labels, &self.secp)?;
     self.events.push(event);
 
     Ok(
