@@ -1,5 +1,7 @@
 use {super::*, event::Event};
 
+mod announcement;
+mod attestation;
 mod event;
 mod outcome;
 
