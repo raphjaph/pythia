@@ -23,7 +23,7 @@ unicode-normalization = "0.1.24"
 
 [dev-dependencies]
 hex = "0.4.3"
-schnorr_fun = "0.10.0"
+schnorr_fun = "0.11.0"
 serde_json = "1.0.137"
 
 [[bin]]
