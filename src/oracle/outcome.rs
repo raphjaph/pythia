@@ -227,7 +227,7 @@ mod tests {
           normalized
             .bytes()
             .fold(String::with_capacity(normalized.len() * 2), |mut acc, b| {
-              write!(&mut acc, "{:02x}", b).unwrap();
+              write!(&mut acc, "{b:02x}").unwrap();
               acc
             });
 
